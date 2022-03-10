@@ -113,15 +113,15 @@ int main (void)
 		if (but1_flag) {
 			for (int i = 0; i < 99999999; i++) {
 				if (!pio_get(BUT1_PIO, PIO_INPUT, BUT1_PIO_IDX_MASK) && i >= 9999000) {
-					freq -= 50;
+					freq -= 100;
 					if (freq <= 0) {
-						freq = 50;
+						freq = 100;
 					}
 					pisca_led1(15, freq);
 					break;
 				}
 				else if (pio_get(BUT1_PIO, PIO_INPUT, BUT1_PIO_IDX_MASK) && i < 9999000) {
-					freq += 50;
+					freq += 100;
 					pisca_led1(15, freq);
 					but1_flag = 0;
 					break;
@@ -132,4 +132,3 @@ int main (void)
 		pmc_sleep(SAM_PM_SMODE_SLEEP_WFI);
 	}
 }
-© 2022 GitHub, Inc.
