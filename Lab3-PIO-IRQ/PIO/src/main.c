@@ -70,18 +70,6 @@ void but_callback(void) {
 	but_flag = 1;
 }
 
-/*
- * Exemplo de callback para o botao, sempre que acontecer
- * ira piscar o led por 5 vezes
- *
- * !! Isso é um exemplo ruim, nao deve ser feito na pratica, !!
- * !! pois nao se deve usar delays dentro de interrupcoes    !!
- */
-//void but_callback(void)
-//{
-  //pisca_led(5, 200);
-//}
-
 /************************************************************************/
 /* funções                                                              */
 /************************************************************************/
