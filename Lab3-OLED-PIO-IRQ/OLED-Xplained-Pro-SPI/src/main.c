@@ -65,18 +65,26 @@ void but3_callback(void) {
 
 void pisca_led1(int n, int t) {
 	double dt = (double)n / t;
-	int time_pisca = dt * 1000; // delay em ms
+	int time_pisca = dt * 1000; 
 	display_oled(freq);
-	gfx_mono_draw_horizontal_line(0, 10, 4*(n-1), GFX_PIXEL_SET);
+	
+	gfx_mono_draw_horizontal_line(0, 10, 100, GFX_PIXEL_SET);
+	gfx_mono_draw_horizontal_line(0, 11, 100, GFX_PIXEL_SET);
+	gfx_mono_draw_horizontal_line(0, 12, 100, GFX_PIXEL_SET);
+	
 	for (int i = 0; i < n; i++) {
 		pio_clear(LED1_PIO, LED1_PIO_ID_MASK);
 		delay_ms(time_pisca);
 		pio_set(LED1_PIO, LED1_PIO_ID_MASK);
 		delay_ms(time_pisca);
-		gfx_mono_draw_horizontal_line(0, 10, 4*i, GFX_PIXEL_CLR);
+		gfx_mono_draw_horizontal_line(0, 10, 3*i, GFX_PIXEL_CLR);
+		gfx_mono_draw_horizontal_line(0, 11, 3*i, GFX_PIXEL_CLR);
+		gfx_mono_draw_horizontal_line(0, 12, 3*i, GFX_PIXEL_CLR);
 		if (but2_flag) {
 			pio_set(LED1_PIO, LED1_PIO_ID_MASK);
-			gfx_mono_draw_horizontal_line(0, 10, 4*(n-1), GFX_PIXEL_CLR);
+			gfx_mono_draw_horizontal_line(0, 10, 100, GFX_PIXEL_CLR);
+			gfx_mono_draw_horizontal_line(0, 11, 100, GFX_PIXEL_CLR);
+			gfx_mono_draw_horizontal_line(0, 12, 100, GFX_PIXEL_CLR);
 			delay_ms(30);
 			break;
 		}
@@ -95,16 +103,13 @@ void display_oled(freq) {
 }
 
 void io_init(void) {
-	// Configura o LED
 	pmc_enable_periph_clk(LED1_PIO_ID);
 	pio_configure(LED1_PIO, PIO_OUTPUT_0, LED1_PIO_ID_MASK, PIO_DEFAULT);
 
-	// Clock do periférico PIO que controla o botão do OLED
 	pmc_enable_periph_clk(BUT1_PIO_ID);
 	pmc_enable_periph_clk(BUT2_PIO_ID);
 	pmc_enable_periph_clk(BUT3_PIO_ID);
 	
-	// PIO lida com pino do botão como entrada com pull-up e debounce
 	pio_configure(BUT1_PIO, PIO_INPUT, BUT1_PIO_IDX_MASK, PIO_PULLUP | PIO_DEBOUNCE);
 	pio_configure(BUT2_PIO, PIO_INPUT, BUT2_PIO_IDX_MASK, PIO_PULLUP | PIO_DEBOUNCE);
 	pio_configure(BUT3_PIO, PIO_INPUT, BUT3_PIO_IDX_MASK, PIO_PULLUP | PIO_DEBOUNCE);
@@ -112,7 +117,6 @@ void io_init(void) {
 	pio_set_debounce_filter(BUT2_PIO, BUT2_PIO_IDX_MASK, 60);
 	pio_set_debounce_filter(BUT3_PIO, BUT3_PIO_IDX_MASK, 60);
 	
-	// Configura interrupção no pinto do botão e associa a ele o callback
 	pio_handler_set(BUT1_PIO,
 	BUT1_PIO_ID,
 	BUT1_PIO_IDX_MASK,
@@ -131,7 +135,6 @@ void io_init(void) {
 	PIO_IT_FALL_EDGE,
 	but3_callback);
 	
-	// Ativa a interrupção e limpa a primeira IRQ gerada na ativação
 	pio_enable_interrupt(BUT1_PIO, BUT1_PIO_IDX_MASK);
 	pio_enable_interrupt(BUT2_PIO, BUT2_PIO_IDX_MASK);
 	pio_enable_interrupt(BUT3_PIO, BUT3_PIO_IDX_MASK);
@@ -139,7 +142,6 @@ void io_init(void) {
 	pio_get_interrupt_status(BUT2_PIO);
 	pio_get_interrupt_status(BUT3_PIO);
 	
-	// Configura NVIC para receber interrupções do PIO do botão com prioridade 4
 	NVIC_EnableIRQ(BUT1_PIO_ID);
 	NVIC_EnableIRQ(BUT2_PIO_ID);
 	NVIC_EnableIRQ(BUT3_PIO_ID);
@@ -152,24 +154,16 @@ int main (void)
 {
 	board_init();
 	
-	// Inicia o clock
 	sysclk_init();
 
-	// Desativa watchdog
 	WDT->WDT_MR = WDT_MR_WDDIS;
 
-	// Configura botão com interrupção
 	io_init();
 
 	delay_init();
 
-	// Init OLED
 	gfx_mono_ssd1306_init();
 	
-	//gfx_mono_draw_filled_circle(20, 16, 16, GFX_PIXEL_SET, GFX_WHOLE);
-	//display_oled(freq);
-
-	/* Insert application code here, after the board has been initialized. */
 	while(1) {
 		if (but1_flag || but2_flag || but3_flag) {
 			for (int i = 0; i < 99999999; i++) {
