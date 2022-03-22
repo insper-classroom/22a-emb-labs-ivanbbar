@@ -18,15 +18,51 @@
 #define ECHO_PRIORITY			4
 
 volatile char echo_flag;
+volatile double distance;
 
-int freq = 130;  // porque 13 é o numero da sorte
+double freq = 340/(2*0.02);
 
 void echo_callback(void);
 void io_init(void);
 void display_oled(freq);
+static void RTT_init(float freqPrescale, uint32_t IrqNPulses, uint32_t rttIRQSource);
+
+static void RTT_init(float freqPrescale, uint32_t IrqNPulses, uint32_t rttIRQSource) {
+
+	uint16_t pllPreScale = (int) (((float) 32768) / freqPrescale);
+	
+	rtt_sel_source(RTT, false);
+	rtt_init(RTT, pllPreScale);
+	
+	if (rttIRQSource & RTT_MR_ALMIEN) {
+		uint32_t ul_previous_time;
+		ul_previous_time = rtt_read_timer_value(RTT);
+		while (ul_previous_time == rtt_read_timer_value(RTT));
+		rtt_write_alarm_time(RTT, IrqNPulses+ul_previous_time);
+	}
+
+	/* config NVIC */
+	NVIC_DisableIRQ(RTT_IRQn);
+	NVIC_ClearPendingIRQ(RTT_IRQn);
+	NVIC_SetPriority(RTT_IRQn, 4);
+	NVIC_EnableIRQ(RTT_IRQn);
+
+	/* Enable RTT interrupt */
+	if (rttIRQSource & (RTT_MR_RTTINCIEN | RTT_MR_ALMIEN))
+	rtt_enable_interrupt(RTT, rttIRQSource);
+	else
+	rtt_disable_interrupt(RTT, RTT_MR_RTTINCIEN | RTT_MR_ALMIEN);
+	
+}
 
 void echo_callback(void) {
-	echo_flag = 1;
+	if (echo_flag) {
+		volatile double tempo = rtt_read_timer_value(RTT);
+	}
+	else {
+		RTT_init(freq, 0, 0);
+	}
+	echo_flag = !echo_flag;
 }
 
 void display_oled(freq) {
@@ -66,35 +102,9 @@ int main (void)
 	delay_init();
 
 	gfx_mono_ssd1306_init();
+	gfx_mono_draw_string("NO DETECT", 0,16, &sysfont);
 	
 	while(1) {
-		if (but1_flag || but2_flag || but3_flag) {
-			for (int i = 0; i < 99999999; i++) {
-				if (pio_get(BUT2_PIO, PIO_INPUT, BUT2_PIO_IDX_MASK)) {
-					if ((!pio_get(BUT1_PIO, PIO_INPUT, BUT1_PIO_IDX_MASK) && i >= 9999000) || !pio_get(BUT3_PIO, PIO_INPUT, BUT3_PIO_IDX_MASK)) {
-						freq -= 100;
-						if (freq <= 0) {
-							freq = 130;
-						}
-						pisca_led1(30, freq);
-						break;
-					}
-					else if ((pio_get(BUT1_PIO, PIO_INPUT, BUT1_PIO_IDX_MASK) && i < 9999000)) {
-						freq += 100;
-						pisca_led1(30, freq);
-						but1_flag = 0;
-						break;
-					}
-				}
-				else {
-					desliga();
-					break;
-				}
-			}
-			but1_flag = 0;
-			but2_flag = 0;
-			but3_flag = 0;
-		}
-		pmc_sleep(SAM_PM_SMODE_SLEEP_WFI);
+		
 	}
 }
