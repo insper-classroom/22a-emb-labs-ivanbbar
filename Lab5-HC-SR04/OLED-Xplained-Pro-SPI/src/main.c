@@ -4,35 +4,17 @@
 #include "gfx_mono_text.h"
 #include "sysfont.h"
 
-/* LED da placa principal */
-#define LED_PIO           PIOC				
-#define LED_PIO_ID        ID_PIOC			 
-#define LED_PIO_IDX       8					
-#define LED_PIO_IDX_MASK  (1 << LED_PIO_IDX) 
+/* TRIG - Pino Y */
+#define TRIG_PIO				PIOC
+#define TRIG_PIO_ID				ID_PIOC
+#define TRIG_PIO_IDX			13
+#define TRIG_PIO_IDX_MASK	    (1u << TRIG_PIO_IDX)
 
-/* LED 1 da placa OLED */
-#define LED1_PIO          PIOA
-#define LED1_PIO_ID       ID_PIOA
-#define LED1_PIO_IDX      0
-#define LED1_PIO_ID_MASK  (1 << LED1_PIO_IDX)
-
-/* Botão 1 da placa OLED */
-#define BUT1_PIO          PIOD
-#define BUT1_PIO_ID       ID_PIOD
-#define BUT1_PIO_IDX      28
-#define BUT1_PIO_IDX_MASK (1 << BUT1_PIO_IDX)
-
-// Botão 2
-#define BUT2_PIO PIOC
-#define BUT2_PIO_ID ID_PIOC
-#define BUT2_PIO_IDX 31
-#define BUT2_PIO_IDX_MASK (1u << BUT2_PIO_IDX)
-
-// Botão 3
-#define BUT3_PIO PIOA
-#define BUT3_PIO_ID ID_PIOA
-#define BUT3_PIO_IDX 19
-#define BUT3_PIO_IDX_MASK (1u << BUT3_PIO_IDX)
+/* ECHO - Pino X */
+#define ECHO_PIO				PIOA
+#define ECHO_PIO_ID				ID_PIOA
+#define ECHO_PIO_IDX			4
+#define ECHO_PIO_ID_MASK		(1 << ECHO_PIO_IDX)
 
 volatile char but1_flag;
 volatile char but2_flag;
