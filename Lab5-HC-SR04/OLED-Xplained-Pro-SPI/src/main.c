@@ -15,67 +15,18 @@
 #define ECHO_PIO_ID				ID_PIOA
 #define ECHO_PIO_IDX			4
 #define ECHO_PIO_ID_MASK		(1 << ECHO_PIO_IDX)
+#define ECHO_PRIORITY			4
 
-volatile char but1_flag;
-volatile char but2_flag;
-volatile char but3_flag;
+volatile char echo_flag;
 
 int freq = 130;  // porque 13 é o numero da sorte
-volatile char str[128];
 
-void but1_callback(void);
-void but2_callback(void);
-void but3_callback(void);
-
-void pisca_led1(int n, int i);
+void echo_callback(void);
 void io_init(void);
 void display_oled(freq);
-void desliga(void);
 
-void but1_callback(void) {
-	but1_flag = 1;
-}
-
-void but2_callback(void) {
-	but2_flag = 1;
-}
-
-void but3_callback(void) {
-	but3_flag = 1;
-}
-
-
-void pisca_led1(int n, int t) {
-	double dt = (double)n / t;
-	int time_pisca = dt * 1000; 
-	display_oled(freq);
-	
-	gfx_mono_draw_horizontal_line(0, 10, 100, GFX_PIXEL_SET);
-	gfx_mono_draw_horizontal_line(0, 11, 100, GFX_PIXEL_SET);
-	gfx_mono_draw_horizontal_line(0, 12, 100, GFX_PIXEL_SET);
-	
-	for (int i = 0; i < n; i++) {
-		pio_clear(LED1_PIO, LED1_PIO_ID_MASK);
-		delay_ms(time_pisca);
-		pio_set(LED1_PIO, LED1_PIO_ID_MASK);
-		delay_ms(time_pisca);
-		gfx_mono_draw_horizontal_line(0, 10, 3*i, GFX_PIXEL_CLR);
-		gfx_mono_draw_horizontal_line(0, 11, 3*i, GFX_PIXEL_CLR);
-		gfx_mono_draw_horizontal_line(0, 12, 3*i, GFX_PIXEL_CLR);
-		if (but2_flag) {
-			pio_set(LED1_PIO, LED1_PIO_ID_MASK);
-			gfx_mono_draw_horizontal_line(0, 10, 100, GFX_PIXEL_CLR);
-			gfx_mono_draw_horizontal_line(0, 11, 100, GFX_PIXEL_CLR);
-			gfx_mono_draw_horizontal_line(0, 12, 100, GFX_PIXEL_CLR);
-			delay_ms(30);
-			break;
-		}
-	}
-}
-
-void desliga(void) {
-	pio_set(LED1_PIO, LED1_PIO_ID_MASK);
-	delay_ms(30);
+void echo_callback(void) {
+	echo_flag = 1;
 }
 
 void display_oled(freq) {
@@ -85,60 +36,30 @@ void display_oled(freq) {
 }
 
 void io_init(void) {
-	pmc_enable_periph_clk(LED1_PIO_ID);
-	pio_configure(LED1_PIO, PIO_OUTPUT_0, LED1_PIO_ID_MASK, PIO_DEFAULT);
-
-	pmc_enable_periph_clk(BUT1_PIO_ID);
-	pmc_enable_periph_clk(BUT2_PIO_ID);
-	pmc_enable_periph_clk(BUT3_PIO_ID);
 	
-	pio_configure(BUT1_PIO, PIO_INPUT, BUT1_PIO_IDX_MASK, PIO_PULLUP | PIO_DEBOUNCE);
-	pio_configure(BUT2_PIO, PIO_INPUT, BUT2_PIO_IDX_MASK, PIO_PULLUP | PIO_DEBOUNCE);
-	pio_configure(BUT3_PIO, PIO_INPUT, BUT3_PIO_IDX_MASK, PIO_PULLUP | PIO_DEBOUNCE);
-	pio_set_debounce_filter(BUT1_PIO, BUT1_PIO_IDX_MASK, 60);
-	pio_set_debounce_filter(BUT2_PIO, BUT2_PIO_IDX_MASK, 60);
-	pio_set_debounce_filter(BUT3_PIO, BUT3_PIO_IDX_MASK, 60);
-	
-	pio_handler_set(BUT1_PIO,
-	BUT1_PIO_ID,
-	BUT1_PIO_IDX_MASK,
-	PIO_IT_FALL_EDGE,
-	but1_callback);
-	
-	pio_handler_set(BUT2_PIO,
-	BUT2_PIO_ID,
-	BUT2_PIO_IDX_MASK,
-	PIO_IT_FALL_EDGE,
-	but2_callback);
-	
-	pio_handler_set(BUT3_PIO,
-	BUT3_PIO_ID,
-	BUT3_PIO_IDX_MASK,
-	PIO_IT_FALL_EDGE,
-	but3_callback);
-	
-	pio_enable_interrupt(BUT1_PIO, BUT1_PIO_IDX_MASK);
-	pio_enable_interrupt(BUT2_PIO, BUT2_PIO_IDX_MASK);
-	pio_enable_interrupt(BUT3_PIO, BUT3_PIO_IDX_MASK);
-	pio_get_interrupt_status(BUT1_PIO);
-	pio_get_interrupt_status(BUT2_PIO);
-	pio_get_interrupt_status(BUT3_PIO);
-	
-	NVIC_EnableIRQ(BUT1_PIO_ID);
-	NVIC_EnableIRQ(BUT2_PIO_ID);
-	NVIC_EnableIRQ(BUT3_PIO_ID);
-	NVIC_SetPriority(BUT1_PIO_ID, 4);
-	NVIC_SetPriority(BUT2_PIO_ID, 4);
-	NVIC_SetPriority(BUT3_PIO_ID, 4);
-}
-
-int main (void)
-{
 	board_init();
 	
 	sysclk_init();
 
 	WDT->WDT_MR = WDT_MR_WDDIS;
+	
+	pmc_enable_periph_clk(TRIG_PIO);
+	pmc_enable_periph_clk(ECHO_PIO);
+	
+	// configura input e output
+	pio_set_input(ECHO_PIO,ECHO_PIO_ID_MASK,PIO_DEFAULT);
+	pio_configure(TRIG_PIO, PIO_OUTPUT_0,TRIG_PIO_IDX_MASK, PIO_DEFAULT);
+	
+	// configura interrupções
+	pio_handler_set(ECHO_PIO, ECHO_PIO_ID, ECHO_PIO_ID_MASK, PIO_IT_EDGE, echo_callback);
+	pio_enable_interrupt(ECHO_PIO, ECHO_PIO_ID_MASK);
+	pio_get_interrupt_status(ECHO_PIO);
+	NVIC_EnableIRQ(ECHO_PIO_ID);
+	NVIC_SetPriority(ECHO_PIO_ID, ECHO_PRIORITY);
+}
+
+int main (void)
+{
 
 	io_init();
 
