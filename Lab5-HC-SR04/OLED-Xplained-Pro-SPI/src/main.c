@@ -4,6 +4,13 @@
 #include "gfx_mono_text.h"
 #include "sysfont.h"
 
+/* Botão 1 */
+#define BUT1_PIO				PIOD
+#define BUT1_PIO_ID				ID_PIOD
+#define BUT1_PIO_IDX			28
+#define BUT1_PIO_IDX_MASK		(1u << BUT1_PIO_IDX)
+#define BUT1_PRIORITY			4 
+
 /* TRIG - Pino Y */
 #define TRIG_PIO				PIOC
 #define TRIG_PIO_ID				ID_PIOC
@@ -18,16 +25,16 @@
 #define ECHO_PRIORITY			4
 
 volatile char echo_flag;
-volatile double distance;
+volatile char but1_flag = 0;
 
-double freq = 340/(2*0.02);
+volatile float freq = (float) 340/(2*0.02);
 volatile double time = 0;
 
 void echo_callback(void);
+void but1_callback(void);
 void io_init(void);
 void display_oled(freq);
 static void RTT_init(float freqPrescale, uint32_t IrqNPulses, uint32_t rttIRQSource);
-void pin_toggle(Pio *pio, uint32_t mask);
 
 static void RTT_init(float freqPrescale, uint32_t IrqNPulses, uint32_t rttIRQSource) {
 
@@ -57,6 +64,10 @@ static void RTT_init(float freqPrescale, uint32_t IrqNPulses, uint32_t rttIRQSou
 	
 }
 
+void but1_callback(void){
+	but1_flag = 1;
+}
+
 void echo_callback(void) {
 	if (echo_flag) {
 		time = rtt_read_timer_value(RTT);
@@ -67,19 +78,13 @@ void echo_callback(void) {
 	echo_flag = !echo_flag;
 }
 
-void display_oled(double time, double freq) {
-	char distance_string[15];
-	double distance = (340*time*100.0)/(freq*2.0);
+void display_oled(double t) {
+	char distance_string[20];
+	float time = (float) t/freq;
+	double distance = (340*time*100.0)/2.0;
 	
-	sprintf(distance_string, "f=%lf cm", distance);
+	sprintf(distance_string, "%2.2f cm", distance);
 	gfx_mono_draw_string(distance_string, 10, 16, &sysfont);
-}
-
-void pin_toggle(Pio *pio, uint32_t mask) {
-	if(pio_get_output_data_status(pio, mask))
-	pio_clear(pio, mask);
-	else
-	pio_set(pio,mask);
 }
 
 void io_init(void) {
@@ -90,12 +95,15 @@ void io_init(void) {
 
 	WDT->WDT_MR = WDT_MR_WDDIS;
 	
+	pmc_enable_periph_clk(BUT1_PIO_ID);
 	pmc_enable_periph_clk(TRIG_PIO);
 	pmc_enable_periph_clk(ECHO_PIO);
 	
 	// configura input e output
 	pio_set_input(ECHO_PIO,ECHO_PIO_ID_MASK,PIO_DEFAULT);
 	pio_configure(TRIG_PIO, PIO_OUTPUT_0,TRIG_PIO_IDX_MASK, PIO_DEFAULT);
+	pio_configure(BUT1_PIO, PIO_INPUT, BUT1_PIO_IDX_MASK, PIO_DEBOUNCE | PIO_PULLUP);
+	pio_set_debounce_filter(BUT1_PIO, BUT1_PIO_IDX_MASK, 60);
 	
 	// configura interrupções
 	pio_handler_set(ECHO_PIO, ECHO_PIO_ID, ECHO_PIO_ID_MASK, PIO_IT_EDGE, echo_callback);
@@ -103,11 +111,16 @@ void io_init(void) {
 	pio_get_interrupt_status(ECHO_PIO);
 	NVIC_EnableIRQ(ECHO_PIO_ID);
 	NVIC_SetPriority(ECHO_PIO_ID, ECHO_PRIORITY);
+	
+	pio_handler_set(BUT1_PIO, BUT1_PIO_ID, BUT1_PIO_IDX_MASK, PIO_IT_FALL_EDGE, but1_callback);
+	pio_enable_interrupt(BUT1_PIO, BUT1_PIO_IDX_MASK);
+	pio_get_interrupt_status(BUT1_PIO);
+	NVIC_EnableIRQ(BUT1_PIO_ID);
+	NVIC_SetPriority(BUT1_PIO_ID, BUT1_PRIORITY);
 }
 
 int main (void)
 {
-
 	io_init();
 
 	delay_init();
@@ -116,8 +129,14 @@ int main (void)
 	gfx_mono_draw_string("NO DETECT", 0,16, &sysfont);
 	
 	while(1) {
-		if (time != 0) {
-			display_oled(time, freq);
-		}
+		if (but1_flag) {
+			but1_flag = 0;
+			pio_set(TRIG_PIO, TRIG_PIO_IDX_MASK);
+			delay_us(10);
+			pio_clear(TRIG_PIO, TRIG_PIO_IDX_MASK);
+			display_oled(time);
+			}
+			
+			pmc_sleep(SAM_PM_SMODE_SLEEP_WFI);
 	}
 }
