@@ -21,11 +21,13 @@ volatile char echo_flag;
 volatile double distance;
 
 double freq = 340/(2*0.02);
+volatile double time = 0;
 
 void echo_callback(void);
 void io_init(void);
 void display_oled(freq);
 static void RTT_init(float freqPrescale, uint32_t IrqNPulses, uint32_t rttIRQSource);
+void pin_toggle(Pio *pio, uint32_t mask);
 
 static void RTT_init(float freqPrescale, uint32_t IrqNPulses, uint32_t rttIRQSource) {
 
@@ -57,7 +59,7 @@ static void RTT_init(float freqPrescale, uint32_t IrqNPulses, uint32_t rttIRQSou
 
 void echo_callback(void) {
 	if (echo_flag) {
-		volatile double tempo = rtt_read_timer_value(RTT);
+		time = rtt_read_timer_value(RTT);
 	}
 	else {
 		RTT_init(freq, 0, 0);
@@ -65,10 +67,19 @@ void echo_callback(void) {
 	echo_flag = !echo_flag;
 }
 
-void display_oled(freq) {
-	char freq_string[15];
-	sprintf(freq_string, "f=%d Hz", freq);
-	gfx_mono_draw_string(freq_string, 10, 16, &sysfont);
+void display_oled(double time, double freq) {
+	char distance_string[15];
+	double distance = (340*time*100.0)/(freq*2.0);
+	
+	sprintf(distance_string, "f=%lf cm", distance);
+	gfx_mono_draw_string(distance_string, 10, 16, &sysfont);
+}
+
+void pin_toggle(Pio *pio, uint32_t mask) {
+	if(pio_get_output_data_status(pio, mask))
+	pio_clear(pio, mask);
+	else
+	pio_set(pio,mask);
 }
 
 void io_init(void) {
@@ -105,6 +116,8 @@ int main (void)
 	gfx_mono_draw_string("NO DETECT", 0,16, &sysfont);
 	
 	while(1) {
-		
+		if (time != 0) {
+			display_oled(time, freq);
+		}
 	}
 }
