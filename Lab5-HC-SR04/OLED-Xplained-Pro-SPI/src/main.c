@@ -29,6 +29,7 @@
 volatile char echo_flag;
 volatile char but1_flag = 0;
 
+
 volatile float freq = (float) 1/(0.000058*2);
 volatile float tiempo = 0;
 
@@ -83,8 +84,19 @@ void echo_callback(void) {
 void display_oled(int t) {
 	char distance_string[20];
 	float distance = (float) (340*t*100.0)/(2.0*freq);
-	sprintf(distance_string, "%2.2f cm", distance);
-	gfx_mono_draw_string(distance_string, 0, 0, &sysfont);
+	
+	// erro ou acima do alcance
+	if (((rtt_get_status(RTT) & RTT_SR_ALMS) == RTT_SR_ALMS) || (distance >= 400)) {
+		gfx_mono_generic_draw_filled_rect(0, 0, 127, 31, GFX_PIXEL_CLR);
+		sprintf(distance_string, "Erro de Leitura");
+		gfx_mono_draw_string(distance_string, 0,0, &sysfont);
+		delay_ms(1000);
+		gfx_mono_generic_draw_filled_rect(0, 0, 127, 31, GFX_PIXEL_CLR);
+	}
+	else {
+		sprintf(distance_string, "%2.2f cm", distance);
+		gfx_mono_draw_string(distance_string, 0, 0, &sysfont);
+	}
 }
 
 void io_init(void) {
