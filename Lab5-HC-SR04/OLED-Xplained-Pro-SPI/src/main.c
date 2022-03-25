@@ -29,7 +29,7 @@
 volatile char echo_flag;
 volatile char but1_flag = 0;
 
-volatile float freq = (float) 340/(2*0.02);
+volatile float freq = (float) 1/(0.000058*2);
 volatile float tiempo = 0;
 
 void echo_callback(void);

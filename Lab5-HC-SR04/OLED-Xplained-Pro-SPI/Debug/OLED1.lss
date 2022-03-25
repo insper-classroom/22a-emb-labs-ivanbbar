@@ -11283,7 +11283,7 @@ void portable_delay_cycles(unsigned long n)
 2040001c:	0900 003d                                   ..=.
 
 20400020 <freq>:
-20400020:	d000 4604                                   ...F
+20400020:	b2c2 4606                                   ...F
 
 20400024 <_impure_ptr>:
 20400024:	0028 2040                                   (.@ 
