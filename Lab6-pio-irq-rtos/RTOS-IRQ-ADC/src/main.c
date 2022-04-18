@@ -19,6 +19,9 @@
 #define TASK_ADC_STACK_SIZE (1024*10 / sizeof(portSTACK_TYPE))
 #define TASK_ADC_STACK_PRIORITY (tskIDLE_PRIORITY)
 
+#define TASK_PROC_STACK_SIZE (1024*10 / sizeof(portSTACK_TYPE))
+#define TASK_PROC_STACK_PRIORITY (tskIDLE_PRIORITY)
+
 extern void vApplicationStackOverflowHook(xTaskHandle *pxTask,
                                           signed char *pcTaskName);
 extern void vApplicationIdleHook(void);
@@ -32,6 +35,7 @@ extern void xPortSysTickHandler(void);
 
 /** Queue for msg log send data */
 QueueHandle_t xQueueADC;
+QueueHandle_t xQueueADCpreProc;
 
 typedef struct {
   uint value;
@@ -120,6 +124,38 @@ static void task_adc(void *pvParameters) {
       printf("Nao chegou um novo dado em 1 segundo");
     }
   }
+}
+
+static void task_proc(void *pvParameters){
+	// configura ADC e TC para controlar a leitura
+	config_AFEC_pot(AFEC_POT, AFEC_POT_ID, AFEC_POT_CHANNEL, AFEC_pot_Callback);
+	TC_init(TC0, ID_TC1, 1, 10);
+	tc_start(TC0, 1);
+
+	// variável para recever dados da fila
+	adcData procAdc;
+	
+	// variáveis de interesse
+	int n = 0;
+	int s = 0;
+	int r;
+	
+	while (1) {
+		if (xQueueReceive(xQueueADCpreProc, &(procAdc), 1000)) {
+			s += procAdc.value;
+			n++;
+			
+			if(n==10) {
+				r = s/n;
+				xQueueSend(xQueueADC, (void *)&r, 10);
+				n = 0;
+				s = 0;
+			}
+			
+			} else {
+			printf("Nao chegou um novo dado em 1 segundo");
+		}
+	}
 }
 
 /************************************************************************/
@@ -222,10 +258,19 @@ int main(void) {
   xQueueADC = xQueueCreate(100, sizeof(adcData));
   if (xQueueADC == NULL)
     printf("falha em criar a queue xQueueADC \n");
+	
+  xQueueADCpreProc = xQueueCreate(100, sizeof(adcData));
+  if (xQueueADCpreProc == NULL)
+    printf("falha em criar a queue xQueueADCpreProc \n");
 
   if (xTaskCreate(task_adc, "ADC", TASK_ADC_STACK_SIZE, NULL,
                   TASK_ADC_STACK_PRIORITY, NULL) != pdPASS) {
     printf("Failed to create test ADC task\r\n");
+  }
+  
+  if (xTaskCreate(task_proc, "PROC", TASK_PROC_STACK_SIZE, NULL,
+				  TASK_PROC_STACK_PRIORITY, NULL) != pdPASS) {
+	  printf("Failed to create test PROC task\r\n");
   }
 
   vTaskStartScheduler();
