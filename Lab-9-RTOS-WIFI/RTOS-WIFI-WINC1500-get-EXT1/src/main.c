@@ -58,6 +58,11 @@ extern void xPortSysTickHandler(void);
 
 TaskHandle_t xHandleWifi = NULL;
 
+#define LED_PIO				PIOC                 
+#define LED_PIO_ID			ID_PIOC                 
+#define LED_PIO_IDX			8                    
+#define LED_PIO_IDX_MASK	(1 << LED_PIO_IDX)  
+
 /************************************************************************/
 /* HOOKs                                                                */
 /************************************************************************/
@@ -80,9 +85,16 @@ extern void vApplicationMallocFailedHook(void){
 /* funcoes                                                              */
 /************************************************************************/
 
+
+void io_init(void){
+	pmc_enable_periph_clk(LED_PIO_ID);
+	pio_set_output(LED_PIO, LED_PIO_IDX_MASK, 0, 0, 0 );
+}
+
 /************************************************************************/
 /* callbacks                                                            */
 /************************************************************************/
+
 
 /**
 * \brief Callback function of IP address.
@@ -254,10 +266,11 @@ static void task_process(void *pvParameters) {
 
       case GET:
       printf("STATE: GET \n");
-      sprintf((char *)g_sendBuffer, MAIN_PREFIX_BUFFER);
+	  sprintf((char *)g_sendBuffer, "GET %s HTTP/1.1\r\n Accept: */*\r\n\r\n", MAIN_PREFIX_BUFFER);
       send(tcp_client_socket, g_sendBuffer, strlen((char *)g_sendBuffer), 0);
       state = ACK;
       break;
+	  
 
       case ACK:
       printf("STATE: ACK \n");
@@ -283,7 +296,19 @@ static void task_process(void *pvParameters) {
       if(xQueueReceive(xQueueMsg, &p_recvMsg, 5000) == pdTRUE){
         printf(STRING_LINE);
         printf(p_recvMsg->pu8Buffer);
-        printf(STRING_EOL);  printf(STRING_LINE);
+		
+		strstr(p_recvMsg->pu8Buffer, "\"led\":");
+		char *status_led = strstr(p_recvMsg->pu8Buffer, "\"led\":")+8;
+		int status = atoi(status_led);
+		
+		if (status == 1) {
+			pio_clear(LED_PIO, LED_PIO_IDX_MASK);
+			} else {
+			pio_set(LED_PIO, LED_PIO_IDX_MASK);
+		}
+		
+        printf(STRING_EOL);  
+		printf(STRING_LINE);
         state = DONE;
       }
       else {
@@ -378,6 +403,7 @@ int main(void)
   /* Initialize the board. */
   sysclk_init();
   board_init();
+  io_init();
 
   /* Initialize the UART console. */
   configure_console();

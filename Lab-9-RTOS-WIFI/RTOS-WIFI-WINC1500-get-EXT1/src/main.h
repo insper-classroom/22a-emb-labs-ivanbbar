@@ -56,7 +56,7 @@ extern "C" {
 #define MAIN_SERVER_PORT                    (5000)
 
 /** Weather information provider server. */
-#define MAIN_SERVER_NAME                    "192.168.0.138"
+#define MAIN_SERVER_NAME                    "192.168.1.10"
 
 /** IP address parsing. */
 #define IPV4_BYTE(val, index)               ((val >> (index * 8)) & 0xFF)
