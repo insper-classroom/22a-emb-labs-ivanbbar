@@ -85,6 +85,9 @@ extern void vApplicationMallocFailedHook(void){
 /* funcoes                                                              */
 /************************************************************************/
 
+void get_function(uint8_t *g_sendBuffer, char *path){
+	sprintf(g_sendBuffer, "GET %s HTTP/1.1\r\n Accept: */*\r\n\r\n", path);
+}
 
 void io_init(void){
 	pmc_enable_periph_clk(LED_PIO_ID);
@@ -266,7 +269,7 @@ static void task_process(void *pvParameters) {
 
       case GET:
       printf("STATE: GET \n");
-	  sprintf((char *)g_sendBuffer, "GET %s HTTP/1.1\r\n Accept: */*\r\n\r\n", MAIN_PREFIX_BUFFER);
+	  get_function(&g_sendBuffer, "/status");
       send(tcp_client_socket, g_sendBuffer, strlen((char *)g_sendBuffer), 0);
       state = ACK;
       break;
